@@ -27,7 +27,8 @@
     "clean": "rm -rf dist",
     "build": "tsup",
     "test": "vitest run",
-    "pack:local": "npm pack"
+    "pack:local": "npm pack",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "svg-path-properties": "^2.0.0",

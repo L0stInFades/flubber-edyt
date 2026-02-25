@@ -35,6 +35,15 @@ If you use the GitHub repo directly:
 npm install github:L0stInFades/flubber-edyt
 ```
 
+## LTS Channel
+
+`0.3.x` is the current LTS line.
+
+- Rolling LTS line (receives backports): `github:L0stInFades/flubber-edyt#lts/0.3`
+- Frozen LTS snapshot: `github:L0stInFades/flubber-edyt#v0.3.1-lts.0`
+
+LTS policy details are in [`LTS.md`](./LTS.md).
+
 ## API
 
 ### `interpolate(fromShape, toShape, options?)`

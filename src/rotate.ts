@@ -24,7 +24,7 @@ function findBestOffsetSampled(ring: Ring, target: Ring): number {
   const len = ring.length;
   const stride = Math.max(1, Math.floor(len / TARGET_SAMPLES));
 
-  let coarseBest = findBestOffset(ring, target, stride, stride);
+  const coarseBest = findBestOffset(ring, target, stride, stride);
 
   // Refine around coarse best with all offsets, still using sampled points.
   let min = Number.POSITIVE_INFINITY;
@@ -41,7 +41,11 @@ function findBestOffsetSampled(ring: Ring, target: Ring): number {
   // Final local exact refinement to keep visual quality stable.
   min = Number.POSITIVE_INFINITY;
   let exactBest = sampledBest;
-  for (let delta = -EXACT_REFINE_WINDOW; delta <= EXACT_REFINE_WINDOW; delta++) {
+  for (
+    let delta = -EXACT_REFINE_WINDOW;
+    delta <= EXACT_REFINE_WINDOW;
+    delta++
+  ) {
     const offset = mod(sampledBest + delta, len);
     const score = scoreOffset(ring, target, offset, 1);
     if (score < min) {

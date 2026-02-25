@@ -127,6 +127,9 @@ function getRingExtent(ring: Ring): number {
 }
 
 function validRing(ring: Ring): boolean {
+  // A morphable polygon ring needs at least 3 points.
+  if (ring.length < 3) return false;
+
   return ring.every((point) => {
     return (
       Array.isArray(point) &&

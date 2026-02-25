@@ -4,6 +4,7 @@ import {
   createShapeMorphInterpolator,
   interpolate,
 } from "./interpolate";
+import { INVALID_INPUT } from "./errors";
 
 describe("flubber-edyt interpolate", () => {
   it("returns exact endpoints for string inputs", () => {
@@ -54,6 +55,24 @@ describe("flubber-edyt interpolate", () => {
     expect(fn(10)).toBe(b);
   });
 
+  it("preserves extrapolation when clamp=false", () => {
+    const a = "M0,0L1,0L1,1L0,1Z";
+    const b = "M0.5,0L1,1L0,1Z";
+    const fn = createShapeMorphInterpolator(a, b, { clamp: false });
+
+    expect(fn(-0.2)).not.toBe(a);
+    expect(fn(1.2)).not.toBe(b);
+  });
+
+  it("still applies endpoint optimization inside [0,1] when clamp=false", () => {
+    const a = "M0,0L1,0L1,1L0,1Z";
+    const b = "M0.5,0L1,1L0,1Z";
+    const fn = createShapeMorphInterpolator(a, b, { clamp: false });
+
+    expect(fn(0.00001)).toBe(a);
+    expect(fn(0.99999)).toBe(b);
+  });
+
   it("applies precision in path output", () => {
     const a: Array<[number, number]> = [
       [0, 0],
@@ -79,6 +98,15 @@ describe("flubber-edyt interpolate", () => {
     }
   });
 
+  it("falls back to safe precision for invalid precision values", () => {
+    const a = "M0,0L1,0L1,1L0,1Z";
+    const b = "M0.5,0L1,1L0,1Z";
+    const fn = createShapeMorphInterpolator(a, b, { precision: Number.NaN });
+
+    const out = fn(0.5);
+    expect(out.includes("NaN")).toBe(false);
+  });
+
   it("uses relative maxSegmentLength scaling for large coordinate paths", () => {
     const a = "M0,0L100,0L100,100L0,100Z";
     const b = "M50,0L100,50L50,100L0,50Z";
@@ -95,10 +123,8 @@ describe("flubber-edyt interpolate", () => {
   });
 
   it("caps approximation point counts for complex curves", () => {
-    const a =
-      "M0,0 C100,0 100,100 0,100 C-100,100 -100,0 0,0 Z";
-    const b =
-      "M0,0 C120,20 120,120 0,140 C-120,120 -120,20 0,0 Z";
+    const a = "M0,0 C100,0 100,100 0,100 C-100,100 -100,0 0,0 Z";
+    const b = "M0,0 C120,20 120,120 0,140 C-120,120 -120,20 0,0 Z";
 
     const fn = createEdytMorphInterpolator(a, b, {
       maxSegmentLength: 0.005,
@@ -108,5 +134,49 @@ describe("flubber-edyt interpolate", () => {
     const segments = (out.match(/L/g)?.length ?? 0) + 1;
 
     expect(segments).toBeLessThanOrEqual(4096);
+  });
+
+  it("rejects empty ring input with INVALID_INPUT", () => {
+    expect(() =>
+      interpolate(
+        [],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+          [0, 1],
+        ],
+        { string: true },
+      ),
+    ).toThrowError(INVALID_INPUT);
+  });
+
+  it("rejects degenerate ring input (fewer than 3 points)", () => {
+    expect(() =>
+      interpolate(
+        [[0, 0]],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+        { string: true },
+      ),
+    ).toThrowError(INVALID_INPUT);
+
+    expect(() =>
+      interpolate(
+        [
+          [0, 0],
+          [1, 0],
+        ],
+        [
+          [0, 0],
+          [1, 0],
+          [1, 1],
+        ],
+        { string: true },
+      ),
+    ).toThrowError(INVALID_INPUT);
   });
 });

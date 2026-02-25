@@ -51,8 +51,12 @@ Options:
 - `string` default: `true`
 - `optimizeEndpoints` default: `true`
 - `endpointEpsilon` default: `1e-4`
-- `clamp` default: `true`
+- `clamp` default: `true` (when `false`, values outside `[0,1]` extrapolate; endpoint optimization still applies inside `[0,1]`)
 - `precision` default: `6` (`null` disables rounding)
+
+Input constraints:
+
+- Ring inputs must contain at least 3 valid `[x, y]` points.
 
 ### `createShapeMorphInterpolator(fromPath, toPath, options?)`
 

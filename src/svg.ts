@@ -4,24 +4,22 @@ import { INVALID_INPUT } from "./errors";
 import { isFiniteNumber } from "./geometry";
 import type { Point, Ring, SegmentLengthMode } from "./types";
 
+type SvgPathSegment = [string, number?, number?];
+type SvgPathParsed = {
+  segments?: SvgPathSegment[];
+  toString: () => string;
+};
+type SvgPathFactory = (path: string) => {
+  abs: () => SvgPathParsed;
+};
+
 const svgPathFactory =
-  (SvgPathModule as unknown as { default?: (path: string) => any }).default ??
-  (SvgPathModule as unknown as (path: string) => any);
+  (SvgPathModule as unknown as { default?: SvgPathFactory }).default ??
+  (SvgPathModule as unknown as SvgPathFactory);
 
 const POW10 = [
-  1,
-  10,
-  100,
-  1000,
-  10000,
-  100000,
-  1000000,
-  10000000,
-  100000000,
-  1000000000,
-  10000000000,
-  100000000000,
-  1000000000000,
+  1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000,
+  10000000000, 100000000000, 1000000000000,
 ];
 
 const DEFAULT_MAX_SEGMENT_LENGTH_MODE: SegmentLengthMode = "relative";
@@ -57,11 +55,11 @@ export function pathStringToRing(
   );
 }
 
-function parse(str: string): any {
+function parse(str: string): SvgPathParsed {
   return svgPathFactory(str).abs();
 }
 
-function split(parsed: any): string[] {
+function split(parsed: SvgPathParsed): string[] {
   return parsed
     .toString()
     .split("M")
@@ -72,7 +70,9 @@ function split(parsed: any): string[] {
     .filter(Boolean);
 }
 
-function exactRing(parsed: any): { ring: Ring; skipBisect: boolean } | null {
+function exactRing(
+  parsed: SvgPathParsed,
+): { ring: Ring; skipBisect: boolean } | null {
   const segments = parsed.segments ?? [];
   const ring: Ring = [];
 
@@ -83,7 +83,11 @@ function exactRing(parsed: any): { ring: Ring; skipBisect: boolean } | null {
 
     if ((command === "M" && i > 0) || command === "Z") break;
 
-    if ((command === "M" || command === "L") && isFiniteNumber(x) && isFiniteNumber(y)) {
+    if (
+      (command === "M" || command === "L") &&
+      isFiniteNumber(x) &&
+      isFiniteNumber(y)
+    ) {
       ring.push([x, y]);
       continue;
     }
@@ -105,7 +109,7 @@ function exactRing(parsed: any): { ring: Ring; skipBisect: boolean } | null {
 }
 
 function approximateRing(
-  parsed: any,
+  parsed: SvgPathParsed,
   maxSegmentLength: number,
   maxSegmentLengthMode: SegmentLengthMode,
 ): {
@@ -217,7 +221,10 @@ function measurePath(path: string): {
 } {
   if (typeof window !== "undefined" && window?.document) {
     try {
-      const node = window.document.createElementNS("http://www.w3.org/2000/svg", "path");
+      const node = window.document.createElementNS(
+        "http://www.w3.org/2000/svg",
+        "path",
+      );
       node.setAttributeNS(null, "d", path);
       return {
         getTotalLength: () => node.getTotalLength(),
@@ -244,7 +251,9 @@ function measurePath(path: string): {
 function formatNumber(value: number, precision: number | null): string {
   if (precision === null) return String(value);
 
-  const p = Math.max(0, Math.min(12, precision));
+  // Runtime guard for untyped JS callers (e.g. precision: NaN).
+  const safePrecision = isFiniteNumber(precision) ? precision : 6;
+  const p = Math.max(0, Math.min(12, Math.round(safePrecision)));
   const factor = POW10[p] ?? 10 ** p;
   const rounded = Math.round(value * factor) / factor;
   return String(rounded);

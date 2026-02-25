@@ -70,8 +70,12 @@ export function interpolate(
     typeof toShape === "string"
       ? (t: number) => {
           const tt = clamp ? clamp01(t) : t;
-          if (tt < endpointEpsilon) return fromShape;
-          if (1 - tt < endpointEpsilon) return toShape;
+          // Preserve extrapolation semantics when clamp=false by only applying
+          // endpoint fast-path inside the canonical [0,1] range.
+          if (clamp || (tt >= 0 && tt <= 1)) {
+            if (tt < endpointEpsilon) return fromShape;
+            if (1 - tt < endpointEpsilon) return toShape;
+          }
           return core(tt);
         }
       : core;
@@ -103,7 +107,11 @@ export function interpolateRing(
     precision?: number | null;
   } = {},
 ): (t: number) => string | Ring {
-  const { string = true, clamp = true, precision = DEFAULT_PRECISION } = options;
+  const {
+    string = true,
+    clamp = true,
+    precision = DEFAULT_PRECISION,
+  } = options;
 
   const fromRing = fromRingInput.slice() as Ring;
   const toRing = toRingInput.slice() as Ring;

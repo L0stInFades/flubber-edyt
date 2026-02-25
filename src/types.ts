@@ -29,6 +29,7 @@ export interface InterpolateOptions {
   endpointEpsilon?: number;
   /**
    * Clamp `t` into [0, 1] before interpolation.
+   * When false, outside-range `t` values extrapolate.
    */
   clamp?: boolean;
   /**
@@ -38,5 +39,4 @@ export interface InterpolateOptions {
   precision?: number | null;
 }
 
-export interface ShapeMorphOptions
-  extends Omit<InterpolateOptions, "string"> {}
+export interface ShapeMorphOptions extends Omit<InterpolateOptions, "string"> {}

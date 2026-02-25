@@ -31,7 +31,10 @@ export function addPoints(ring: Ring, numPoints: number): void {
   }
 }
 
-export function bisect(ring: Ring, maxSegmentLength = Number.POSITIVE_INFINITY): void {
+export function bisect(
+  ring: Ring,
+  maxSegmentLength = Number.POSITIVE_INFINITY,
+): void {
   for (let i = 0; i < ring.length; i++) {
     const a = ring[i]!;
     let b = i === ring.length - 1 ? ring[0]! : ring[i + 1]!;

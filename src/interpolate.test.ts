@@ -78,4 +78,35 @@ describe("flubber-edyt interpolate", () => {
       expect(match[0].split(".")[1]?.length ?? 0).toBeLessThanOrEqual(3);
     }
   });
+
+  it("uses relative maxSegmentLength scaling for large coordinate paths", () => {
+    const a = "M0,0L100,0L100,100L0,100Z";
+    const b = "M50,0L100,50L50,100L0,50Z";
+
+    const fn = createEdytMorphInterpolator(a, b, {
+      maxSegmentLength: 0.005,
+      maxSegmentLengthMode: "relative",
+    });
+
+    const out = fn(0.5);
+    const segments = (out.match(/L/g)?.length ?? 0) + 1;
+
+    expect(segments).toBeLessThanOrEqual(4096);
+  });
+
+  it("caps approximation point counts for complex curves", () => {
+    const a =
+      "M0,0 C100,0 100,100 0,100 C-100,100 -100,0 0,0 Z";
+    const b =
+      "M0,0 C120,20 120,120 0,140 C-120,120 -120,20 0,0 Z";
+
+    const fn = createEdytMorphInterpolator(a, b, {
+      maxSegmentLength: 0.005,
+    });
+
+    const out = fn(0.5);
+    const segments = (out.match(/L/g)?.length ?? 0) + 1;
+
+    expect(segments).toBeLessThanOrEqual(4096);
+  });
 });

@@ -2,7 +2,7 @@ import * as SvgPathModule from "svgpath";
 import { svgPathProperties } from "svg-path-properties";
 import { INVALID_INPUT } from "./errors";
 import { isFiniteNumber } from "./geometry";
-import type { Point, Ring } from "./types";
+import type { Point, Ring, SegmentLengthMode } from "./types";
 
 const svgPathFactory =
   (SvgPathModule as unknown as { default?: (path: string) => any }).default ??
@@ -24,6 +24,11 @@ const POW10 = [
   1000000000000,
 ];
 
+const DEFAULT_MAX_SEGMENT_LENGTH_MODE: SegmentLengthMode = "relative";
+const MAX_APPROX_POINTS = 4096;
+const BOUNDS_SAMPLES = 64;
+const MIN_SEGMENT_LENGTH = 1e-9;
+
 export function toPathString(ring: Ring, precision: number | null = 6): string {
   let out = "M";
 
@@ -37,12 +42,19 @@ export function toPathString(ring: Ring, precision: number | null = 6): string {
   return out;
 }
 
-export function pathStringToRing(path: string, maxSegmentLength: number): {
+export function pathStringToRing(
+  path: string,
+  maxSegmentLength: number,
+  maxSegmentLengthMode: SegmentLengthMode = DEFAULT_MAX_SEGMENT_LENGTH_MODE,
+): {
   ring: Ring;
   skipBisect: boolean;
 } {
   const parsed = parse(path);
-  return exactRing(parsed) ?? approximateRing(parsed, maxSegmentLength);
+  return (
+    exactRing(parsed) ??
+    approximateRing(parsed, maxSegmentLength, maxSegmentLengthMode)
+  );
 }
 
 function parse(str: string): any {
@@ -92,7 +104,11 @@ function exactRing(parsed: any): { ring: Ring; skipBisect: boolean } | null {
   return ring.length > 0 ? { ring, skipBisect: false } : null;
 }
 
-function approximateRing(parsed: any, maxSegmentLength: number): {
+function approximateRing(
+  parsed: any,
+  maxSegmentLength: number,
+  maxSegmentLengthMode: SegmentLengthMode,
+): {
   ring: Ring;
   skipBisect: boolean;
 } {
@@ -104,10 +120,18 @@ function approximateRing(parsed: any, maxSegmentLength: number): {
   const measured = measurePath(ringPath);
   const length = measured.getTotalLength();
 
+  const effectiveSegmentLength = resolvePathSegmentLength(
+    measured,
+    length,
+    maxSegmentLength,
+    maxSegmentLengthMode,
+  );
+
   let numPoints = 3;
-  if (isFiniteNumber(maxSegmentLength) && maxSegmentLength > 0) {
-    numPoints = Math.max(numPoints, Math.ceil(length / maxSegmentLength));
+  if (isFiniteNumber(effectiveSegmentLength) && effectiveSegmentLength > 0) {
+    numPoints = Math.max(numPoints, Math.ceil(length / effectiveSegmentLength));
   }
+  numPoints = Math.min(numPoints, MAX_APPROX_POINTS);
 
   const ring: Ring = [];
   for (let i = 0; i < numPoints; i++) {
@@ -116,6 +140,75 @@ function approximateRing(parsed: any, maxSegmentLength: number): {
   }
 
   return { ring, skipBisect: true };
+}
+
+function resolvePathSegmentLength(
+  measured: {
+    getTotalLength: () => number;
+    getPointAtLength: (length: number) => Point;
+  },
+  length: number,
+  maxSegmentLength: number,
+  mode: SegmentLengthMode,
+): number {
+  if (!isFiniteNumber(maxSegmentLength) || maxSegmentLength <= 0) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  let effective = maxSegmentLength;
+
+  if (mode === "relative" && maxSegmentLength < 1) {
+    const extent = estimatePathExtent(measured, length);
+    if (extent > 1) {
+      effective = maxSegmentLength * extent;
+    }
+  }
+
+  if (!isFiniteNumber(length) || length <= 0) {
+    return effective;
+  }
+
+  const estimatedPoints = Math.max(
+    3,
+    Math.ceil(length / Math.max(effective, MIN_SEGMENT_LENGTH)),
+  );
+
+  if (estimatedPoints <= MAX_APPROX_POINTS) {
+    return effective;
+  }
+
+  return length / MAX_APPROX_POINTS;
+}
+
+function estimatePathExtent(
+  measured: {
+    getTotalLength: () => number;
+    getPointAtLength: (length: number) => Point;
+  },
+  length: number,
+): number {
+  const samples = Math.max(2, BOUNDS_SAMPLES);
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+
+  for (let i = 0; i < samples; i++) {
+    const at = length <= 0 ? 0 : (length * i) / (samples - 1);
+    const p = measured.getPointAtLength(at);
+    const x = p[0];
+    const y = p[1];
+
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  const width = maxX - minX;
+  const height = maxY - minY;
+
+  return Math.max(width, height, 1);
 }
 
 function measurePath(path: string): {

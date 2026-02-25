@@ -10,9 +10,11 @@ import type {
   ShapeInput,
   ShapeMorphOptions,
   Point,
+  SegmentLengthMode,
 } from "./types";
 
 const DEFAULT_MAX_SEGMENT_LENGTH = 0.005;
+const DEFAULT_MAX_SEGMENT_LENGTH_MODE: SegmentLengthMode = "relative";
 const DEFAULT_ENDPOINT_EPSILON = 1e-4;
 const DEFAULT_PRECISION = 6;
 
@@ -23,6 +25,7 @@ export function interpolate(
   toShape: ShapeInput,
   {
     maxSegmentLength = DEFAULT_MAX_SEGMENT_LENGTH,
+    maxSegmentLengthMode = DEFAULT_MAX_SEGMENT_LENGTH_MODE,
     string = true,
     optimizeEndpoints = true,
     endpointEpsilon = DEFAULT_ENDPOINT_EPSILON,
@@ -34,6 +37,7 @@ export function interpolate(
     fromShape,
     toShape,
     maxSegmentLength,
+    maxSegmentLengthMode,
     string,
     optimizeEndpoints,
     endpointEpsilon,
@@ -46,8 +50,12 @@ export function interpolate(
     if (cached) return cached;
   }
 
-  const fromRing = normalizeRing(fromShape, maxSegmentLength);
-  const toRing = normalizeRing(toShape, maxSegmentLength);
+  const fromRing = normalizeRing(
+    fromShape,
+    maxSegmentLength,
+    maxSegmentLengthMode,
+  );
+  const toRing = normalizeRing(toShape, maxSegmentLength, maxSegmentLengthMode);
 
   const core = interpolateRing(fromRing, toRing, {
     string,
@@ -161,6 +169,7 @@ function buildCacheKey(
   fromShape: ShapeInput,
   toShape: ShapeInput,
   maxSegmentLength: number,
+  maxSegmentLengthMode: SegmentLengthMode,
   string: boolean,
   optimizeEndpoints: boolean,
   endpointEpsilon: number,
@@ -173,6 +182,7 @@ function buildCacheKey(
     fromShape,
     toShape,
     maxSegmentLength,
+    maxSegmentLengthMode,
     string,
     optimizeEndpoints,
     endpointEpsilon,

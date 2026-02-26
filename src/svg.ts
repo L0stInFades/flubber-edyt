@@ -248,7 +248,7 @@ function measurePath(path: string): {
   };
 }
 
-function formatNumber(value: number, precision: number | null): string {
+export function formatNumber(value: number, precision: number | null): string {
   if (precision === null) return String(value);
 
   // Runtime guard for untyped JS callers (e.g. precision: NaN).

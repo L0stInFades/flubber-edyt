@@ -2,7 +2,7 @@ import { addPoints } from "./add";
 import { clamp01, interpolatePoint } from "./geometry";
 import { normalizeRing } from "./normalize";
 import { rotateToBestAlignment } from "./rotate";
-import { toPathString } from "./svg";
+import { formatNumber } from "./svg";
 import { LruCache } from "./lru";
 import type {
   InterpolateOptions,
@@ -166,11 +166,18 @@ function interpolatePathString(
   t: number,
   precision: number | null,
 ): string {
-  const ring: Ring = new Array(fromX.length);
-  for (let i = 0; i < fromX.length; i++) {
-    ring[i] = [fromX[i]! + t * dx[i]!, fromY[i]! + t * dy[i]!] as Point;
+  const len = fromX.length;
+  let out = "M";
+
+  for (let i = 0; i < len; i++) {
+    const x = fromX[i]! + t * dx[i]!;
+    const y = fromY[i]! + t * dy[i]!;
+    out += `${formatNumber(x, precision)},${formatNumber(y, precision)}`;
+    if (i < len - 1) out += "L";
   }
-  return toPathString(ring, precision);
+
+  out += "Z";
+  return out;
 }
 
 function buildCacheKey(
@@ -196,7 +203,7 @@ function buildCacheKey(
     endpointEpsilon,
     clamp,
     precision,
-  ].join("|");
+  ].join("\0");
 }
 
 /**

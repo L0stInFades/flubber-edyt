@@ -21,7 +21,7 @@ export function samePoint(a: Point, b: Point): boolean {
 export function polygonArea(ring: Ring): number {
   let area = 0;
   for (let i = 0; i < ring.length; i++) {
-    const a = ring[i];
+    const a = ring[i]!;
     const b = ring[(i + 1) % ring.length]!;
     area += a[0] * b[1] - b[0] * a[1];
   }
